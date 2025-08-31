@@ -23,6 +23,7 @@ Butler Connect is a comprehensive, safety-first control system designed for the 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Python 3.8 or higher
 - Unitree Go2 robot connected to network
 - Network connectivity to robot's IP address
@@ -30,6 +31,7 @@ Butler Connect is a comprehensive, safety-first control system designed for the 
 ### Installation & Startup
 
 #### Option 1: Quick Start Scripts (Recommended)
+
 ```bash
 # Windows
 start.bat
@@ -42,6 +44,7 @@ python quick_start.py
 ```
 
 #### Option 2: Manual Setup
+
 ```bash
 # 1. Install dependencies
 pip install -r requirements.txt
@@ -54,8 +57,9 @@ python src/main.py
 ```
 
 ### 🌐 Access the Interface
-- **Web Control Panel**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs  
+
+- **Web Control Panel**: <http://localhost:8000>
+- **API Documentation**: <http://localhost:8000/docs>  
 - **WebSocket Endpoint**: ws://localhost:8000/ws
 
 ## 📁 Project Structure
@@ -103,6 +107,7 @@ butler-connect/
 ## 🎮 Control Features
 
 ### Web Interface
+
 - **Connection Management** - Connect/disconnect from robot
 - **Movement Controls** - Directional buttons and virtual joystick
 - **Safety Controls** - Emergency stop and gait selection
@@ -110,6 +115,7 @@ butler-connect/
 - **Visual Feedback** - Status indicators and alerts
 
 ### API Endpoints
+
 - `POST /api/robot/connect` - Connect to robot
 - `POST /api/robot/disconnect` - Disconnect from robot
 - `GET /api/robot/status` - Get current status
@@ -118,6 +124,7 @@ butler-connect/
 - `POST /api/robot/emergency_stop` - Emergency stop
 
 ### Movement Control
+
 - **Velocity Control** - Linear X/Y and angular Z movement
 - **Gait Management** - Walk, trot, and run gaits
 - **Trajectory Planning** - Smooth path execution
@@ -126,18 +133,21 @@ butler-connect/
 ## 🛡️ Safety Features
 
 ### Emergency Stop System
+
 - **Hardware Emergency Stop** - Immediate motion halt
 - **Web Emergency Stop** - One-click safety button
 - **API Emergency Stop** - Programmatic safety trigger
 - **Auto-Recovery** - Safe restart procedures
 
 ### Boundary Monitoring
+
 - **Position Limits** - X/Y/Z position boundaries
 - **Velocity Limits** - Maximum speed restrictions
 - **Temperature Monitoring** - Overheat protection
 - **Battery Monitoring** - Low battery alerts
 
 ### Safety Alerts
+
 - **Real-time Monitoring** - Continuous safety checks
 - **Visual Alerts** - Web interface warnings
 - **Audio Alerts** - System notification sounds
@@ -146,12 +156,14 @@ butler-connect/
 ## 📊 Monitoring & Logging
 
 ### State Monitoring
+
 - **Real-time Data** - Live robot state updates
 - **Historical Tracking** - Time-series data storage
 - **Performance Metrics** - Movement efficiency analysis
 - **Data Export** - JSON/CSV export capabilities
 
 ### Logging System
+
 - **Structured Logging** - JSON formatted logs
 - **Log Rotation** - Automatic file management
 - **Multiple Levels** - Debug, info, warning, error
@@ -160,6 +172,7 @@ butler-connect/
 ## ⚙️ Configuration
 
 ### Robot Configuration (`robot_config.yaml`)
+
 ```yaml
 connection:
   ip_address: "192.168.123.161"  # Robot's IP address
@@ -169,6 +182,7 @@ connection:
 ```
 
 ### Control Configuration (`control_config.yaml`)
+
 ```yaml
 limits:
   max_linear_velocity: 1.0      # m/s
@@ -177,6 +191,7 @@ limits:
 ```
 
 ### Safety Configuration (`safety_config.yaml`)
+
 ```yaml
 boundaries:
   position_x: [-2.0, 2.0]       # X-axis limits (m)
@@ -187,6 +202,7 @@ boundaries:
 ## 🔧 Technical Architecture
 
 ### Core Components
+
 - **RobotManager** - Handles robot communication and state
 - **MotionController** - High-level movement coordination
 - **SafetyMonitor** - Continuous safety oversight
@@ -194,12 +210,14 @@ boundaries:
 - **APIServer** - Web interface and REST API
 
 ### Communication Protocol
+
 - **UDP Communication** - Primary robot communication
 - **WebSocket Updates** - Real-time web interface updates
 - **JSON Messaging** - Structured data exchange
 - **Error Handling** - Robust error recovery
 
 ### Data Flow
+
 ```
 Web Interface ← WebSocket ← APIServer ← RobotManager ← Robot
                      ↓           ↓            ↓
@@ -209,6 +227,7 @@ Web Interface ← WebSocket ← APIServer ← RobotManager ← Robot
 ## 🧪 Development
 
 ### Development Setup
+
 ```bash
 # Clone repository
 git clone https://github.com/risebt/butler-connect.git
@@ -228,6 +247,7 @@ uvicorn src.web.api_server:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Testing
+
 ```bash
 # Run tests (when implemented)
 pytest tests/
@@ -242,12 +262,14 @@ pytest tests/
 ## 🛠️ Troubleshooting
 
 ### Common Issues
+
 1. **Connection Failed** - Check robot IP address and network
 2. **Import Errors** - Install missing dependencies with `pip install -r requirements.txt`
 3. **Permission Denied** - Run with appropriate permissions
 4. **Port Conflicts** - Change port in configuration
 
 ### Debug Steps
+
 1. Check logs in `logs/` directory
 2. Verify configuration files in `config/`
 3. Test network connectivity to robot
@@ -264,6 +286,7 @@ We welcome contributions! Please follow these steps:
 5. **Open a Pull Request**
 
 ### Development Guidelines
+
 - Follow PEP 8 style guidelines
 - Add tests for new functionality
 - Update documentation for new features
@@ -277,20 +300,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Developed by RISE Building Technology - Leaders in innovative building automation and robotics solutions.
 
-- **Website**: https://risetechnology.com.au
-- **Email**: rav@risetechnology.com.au
+- **Website**: <https://risetechnology.com.au>
+- **Email**: <rav@risetechnology.com.au>
 - **Location**: Brisbane, Australia
 
 ## 📞 Support
 
 For support and questions:
+
 - **Create an Issue**: Use GitHub Issues for bug reports and feature requests
 - **Documentation**: Check the `/docs` directory for detailed documentation
-- **API Docs**: Available at http://localhost:8000/docs when running
+- **API Docs**: Available at <http://localhost:8000/docs> when running
 
 ## ⚠️ Safety Disclaimer
 
 **IMPORTANT**: Always prioritize safety when operating robotic systems:
+
 - Keep emergency stop accessible at all times
 - Ensure adequate space for robot movement
 - Monitor battery levels during operation

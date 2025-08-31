@@ -9,8 +9,8 @@ from typing import Dict, Any, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
 
-from src.core.robot_manager import RobotManager, MotionCommand, RobotMode
-from src.utils.logger import get_logger
+from core.robot_manager import RobotManager, MotionCommand, RobotMode
+from utils.logger import get_logger
 
 
 class GaitType(Enum):

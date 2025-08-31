@@ -8,10 +8,10 @@ import signal
 import sys
 from pathlib import Path
 
-from src.core.robot_manager import RobotManager
-from src.web.api_server import APIServer
-from src.utils.config_loader import ConfigLoader
-from src.utils.logger import setup_logging
+from core.robot_manager import RobotManager
+from web.api_server import APIServer
+from utils.config_loader import ConfigLoader
+from utils.logger import setup_logging
 
 
 class ButlerConnectApp:

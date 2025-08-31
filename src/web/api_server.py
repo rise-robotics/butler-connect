@@ -14,8 +14,8 @@ from fastapi.requests import Request
 from fastapi.responses import HTMLResponse
 import uvicorn
 
-from src.core.robot_manager import RobotManager, MotionCommand, RobotState
-from src.utils.logger import get_logger
+from core.robot_manager import RobotManager, MotionCommand, RobotState
+from utils.logger import get_logger
 
 
 class APIServer:

@@ -11,8 +11,8 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 from collections import deque
 
-from src.core.robot_manager import RobotManager, RobotState
-from src.utils.logger import get_logger
+from core.robot_manager import RobotManager, RobotState
+from utils.logger import get_logger
 
 
 @dataclass

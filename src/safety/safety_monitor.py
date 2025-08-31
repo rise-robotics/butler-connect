@@ -9,8 +9,8 @@ from typing import Dict, Any, Callable, List, Optional
 from dataclasses import dataclass
 from enum import Enum
 
-from src.core.robot_manager import RobotManager, RobotState
-from src.utils.logger import get_logger
+from core.robot_manager import RobotManager, RobotState
+from utils.logger import get_logger
 
 
 class SafetyLevel(Enum):
@@ -367,7 +367,7 @@ class SafetyMonitor:
             await self.emergency_stop(alert.message)
         elif alert.action == SafetyAction.STOP:
             # Send stop command but don't trigger full emergency stop
-            from src.core.robot_manager import MotionCommand
+            from core.robot_manager import MotionCommand
             stop_command = MotionCommand()
             await self.robot_manager.send_motion_command(stop_command)
         elif alert.action == SafetyAction.SLOW_DOWN:

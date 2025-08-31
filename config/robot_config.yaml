@@ -1,7 +1,7 @@
 # Robot connection configuration
 robot:
   # Network settings
-  ip_address: "192.168.123.161"  # Default Unitree Go2 IP
+  ip_address: "unitree.local"    # Robot hostname/IP address
   udp_port: 8082                 # High-level command port
   low_level_port: 8007           # Low-level command port
   
