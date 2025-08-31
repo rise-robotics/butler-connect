@@ -35,14 +35,17 @@ class APIServer:
         
         # Setup routes
         self._setup_routes()
-        
+
         # WebSocket connections
         self.websocket_connections: list[WebSocket] = []
-        
-        # Server configuration
-        self.host = "localhost"
-        self.port = 8080
-        
+
+        # Server configuration (configurable)
+        server_cfg = (self.config or {}).get("server", {})
+        # Allow env override for PORT commonly used in PaaS
+        import os
+        self.host = server_cfg.get("host", "localhost")
+        self.port = int(os.environ.get("PORT", server_cfg.get("port", 8080)))
+
         # Register robot callbacks
         self.robot_manager.register_state_callback(self._on_robot_state_update)
         self.robot_manager.register_error_callback(self._on_robot_error)
@@ -65,7 +68,10 @@ class APIServer:
         @self.app.get("/", response_class=HTMLResponse)
         async def root(request: Request):
             if hasattr(self, 'templates'):
-                return self.templates.TemplateResponse("index.html", {"request": request})
+                return self.templates.TemplateResponse(
+                    "index.html",
+                    {"request": request, "protocol": self.robot_manager.protocol}
+                )
             return HTMLResponse("<h1>Butler Connect - Unitree Go2 Interface</h1><p>Web interface not available</p>")
         
         # Robot status endpoints
@@ -115,7 +121,7 @@ class APIServer:
                     linear_y=command.get('linear_y', 0.0),
                     angular_z=command.get('angular_z', 0.0),
                     step_height=command.get('step_height', 0.1),
-                    gait_type=command.get('gait_type', 'trot')
+                    gait_type=str(command.get('gait_type', 'trot'))
                 )
                 
                 success = await self.robot_manager.send_motion_command(motion_cmd)
@@ -203,8 +209,14 @@ class APIServer:
             return {
                 "status": "healthy",
                 "robot_connected": self.robot_manager.is_connected,
-                "timestamp": self.robot_manager.robot_state.last_update
+                "timestamp": self.robot_manager.robot_state.last_update,
+                "protocol": self.robot_manager.protocol
             }
+
+        # Protocol endpoint for UI verification
+        @self.app.get("/api/protocol")
+        async def get_protocol():
+            return {"protocol": self.robot_manager.protocol}
     
     async def start(self):
         """Start the API server"""

@@ -4,6 +4,7 @@ Robot Manager - Core class for managing Unitree Go2 robot connection and control
 
 import asyncio
 import logging
+import math
 import socket
 import struct
 import time
@@ -12,6 +13,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from utils.logger import get_logger
+from core.ros2_client import ROS2Client
 
 
 class RobotMode(Enum):
@@ -59,33 +61,37 @@ class RobotManager:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.logger = get_logger(__name__)
-        
+
         # Robot configuration
         self.robot_config = config.get('robot', {})
         self.comm_config = config.get('communication', {})
         self.safety_config = config.get('safety', {})
-        
-        # Connection parameters
+
+        # Communication protocol
+        self.protocol = (self.comm_config.get('protocol') or 'udp').lower()
+        self.ros2_client = None
+
+        # Connection parameters (used for UDP/mock)
         self.robot_ip = self.robot_config.get('ip_address', '192.168.123.161')
         self.udp_port = self.robot_config.get('udp_port', 8082)
         self.timeout = self.robot_config.get('timeout', 5.0)
-        
+
         # State management
         self.robot_state = RobotState()
         self.is_connected = False
         self.socket = None
         self.monitoring_task = None
         self.command_task = None
-        
+
         # Callbacks
-        self.state_callbacks: list[Callable] = []
-        self.error_callbacks: list[Callable] = []
-        
+        self.state_callbacks = []
+        self.error_callbacks = []
+
         # Safety
         self.emergency_stop = False
         self.last_heartbeat = 0.0
-        
-        self.logger.info("Robot Manager initialized")
+
+        self.logger.info(f"Robot Manager initialized (protocol={self.protocol})")
     
     async def initialize(self) -> bool:
         """Initialize the robot manager"""
@@ -98,6 +104,17 @@ class RobotManager:
             
             # Initialize safety systems
             self._initialize_safety()
+
+            # Initialize transport layer
+            if self.protocol == 'ros2':
+                self.logger.info("Initializing ROS 2 transport...")
+                self.ros2_client = ROS2Client(self.config)
+                if not self.ros2_client.initialize():
+                    self.logger.error("ROS 2 initialization failed. Falling back to UDP mock mode.")
+                    # Fallback to UDP mock
+                    self.protocol = 'udp'
+                else:
+                    self.logger.info("ROS 2 transport ready")
             
             self.logger.info("Robot manager initialization complete")
             return True
@@ -109,23 +126,28 @@ class RobotManager:
     async def connect(self) -> bool:
         """Connect to the robot"""
         try:
-            self.logger.info(f"Connecting to robot at {self.robot_ip}:{self.udp_port}")
-            
-            # Create UDP socket
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.socket.settimeout(self.timeout)
-            
-            # Test connection with ping
-            if await self._test_connection():
+            if self.protocol == 'ros2':
+                # In ROS 2 mode, initialization already created the node and pubs/subs
                 self.is_connected = True
                 self.robot_state.is_connected = True
                 self.last_heartbeat = time.time()
-                
-                self.logger.info("Successfully connected to robot")
+                self.logger.info("Connected (ROS 2 mode)")
                 return True
             else:
-                self.logger.error("Failed to establish connection with robot")
-                return False
+                self.logger.info(f"Connecting to robot at {self.robot_ip}:{self.udp_port} (UDP mode)")
+                # Create UDP socket
+                self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self.socket.settimeout(self.timeout)
+                # Test connection with ping
+                if await self._test_connection():
+                    self.is_connected = True
+                    self.robot_state.is_connected = True
+                    self.last_heartbeat = time.time()
+                    self.logger.info("Successfully connected to robot")
+                    return True
+                else:
+                    self.logger.error("Failed to establish connection with robot")
+                    return False
                 
         except Exception as e:
             self.logger.error(f"Connection error: {e}")
@@ -145,11 +167,15 @@ class RobotManager:
             
             # Send stop command before disconnecting
             await self.send_motion_command(MotionCommand())
-            
-            # Close socket
-            if self.socket:
-                self.socket.close()
-                self.socket = None
+
+            if self.protocol == 'ros2':
+                if self.ros2_client:
+                    self.ros2_client.shutdown()
+            else:
+                # Close socket
+                if self.socket:
+                    self.socket.close()
+                    self.socket = None
             
             self.is_connected = False
             self.robot_state.is_connected = False
@@ -174,13 +200,20 @@ class RobotManager:
             if not self._validate_motion_command(command):
                 return False
             
-            # Create command packet
-            packet = self._create_motion_packet(command)
-            
-            # Send command
-            self.socket.sendto(packet, (self.robot_ip, self.udp_port))
-            
-            self.logger.debug(f"Sent motion command: {command}")
+            if self.protocol == 'ros2':
+                # Publish Twist
+                if self.ros2_client:
+                    self.ros2_client.publish_twist(command.linear_x, command.linear_y, command.angular_z)
+                self.logger.debug(f"ROS 2: Published motion command: {command}")
+            else:
+                # Create command packet (UDP/mock)
+                packet = self._create_motion_packet(command)
+                # Send command
+                if not self.socket:
+                    self.logger.error("UDP socket not initialized; cannot send motion packet")
+                    return False
+                self.socket.sendto(packet, (self.robot_ip, self.udp_port))
+                self.logger.debug(f"UDP: Sent motion command: {command}")
             return True
             
         except Exception as e:
@@ -209,11 +242,20 @@ class RobotManager:
             
             self.logger.info("Commanding robot to stand up")
             
-            # Create stand command packet
-            stand_packet = self._create_mode_packet(RobotMode.STAND)
-            
-            # Send command
-            self.socket.sendto(stand_packet, (self.robot_ip, self.udp_port))
+            if self.protocol == 'ros2':
+                ok = self.ros2_client.call_stand() if self.ros2_client else False
+                if not ok:
+                    self.logger.warning("Stand service not available or failed; ensure robot driver exposes it")
+                else:
+                    self.logger.info("Stand service call succeeded")
+            else:
+                # Create stand command packet
+                stand_packet = self._create_mode_packet(RobotMode.STAND)
+                # Send command
+                if not self.socket:
+                    self.logger.error("UDP socket not initialized; cannot send stand packet")
+                    return False
+                self.socket.sendto(stand_packet, (self.robot_ip, self.udp_port))
             
             # Update robot state
             self.robot_state.mode = RobotMode.STAND
@@ -234,11 +276,20 @@ class RobotManager:
             
             self.logger.info("Commanding robot to sit down")
             
-            # Create sit command packet
-            sit_packet = self._create_mode_packet(RobotMode.SIT)
-            
-            # Send command
-            self.socket.sendto(sit_packet, (self.robot_ip, self.udp_port))
+            if self.protocol == 'ros2':
+                ok = self.ros2_client.call_sit() if self.ros2_client else False
+                if not ok:
+                    self.logger.warning("Sit service not available or failed; ensure robot driver exposes it")
+                else:
+                    self.logger.info("Sit service call succeeded")
+            else:
+                # Create sit command packet
+                sit_packet = self._create_mode_packet(RobotMode.SIT)
+                # Send command
+                if not self.socket:
+                    self.logger.error("UDP socket not initialized; cannot send sit packet")
+                    return False
+                self.socket.sendto(sit_packet, (self.robot_ip, self.udp_port))
             
             # Update robot state
             self.robot_state.mode = RobotMode.SIT
@@ -261,19 +312,22 @@ class RobotManager:
     async def _test_connection(self) -> bool:
         """Test connection to robot"""
         try:
-            # MOCK MODE: This is a placeholder connection test
-            # Real Unitree Go2 robots use DDS communication, not UDP
-            self.logger.warning("MOCK MODE: Using placeholder connection test")
-            self.logger.warning("Real Go2 robots require Unitree SDK2 with DDS communication")
-            
-            # Send ping packet (mock - robot will ignore this)
-            ping_packet = b'\x00\x01\x02\x03'  # Simple ping
-            self.socket.sendto(ping_packet, (self.robot_ip, self.udp_port))
-            
-            # Wait for response (simplified - always returns True in mock mode)
-            await asyncio.sleep(0.1)
-            self.logger.warning("MOCK MODE: Connection test passed (robot may not actually respond)")
-            return True
+            if self.protocol == 'ros2':
+                # ROS 2 mode assumes node init success as connectivity
+                self.logger.info("ROS 2 mode: skipping UDP ping; node initialized")
+                return self.ros2_client is not None
+            else:
+                # MOCK/UDP placeholder
+                self.logger.warning("MOCK MODE: Using placeholder connection test (UDP)")
+                # Send ping packet (mock - robot may ignore this)
+                ping_packet = b'\x00\x01\x02\x03'
+                if not self.socket:
+                    self.logger.error("UDP socket not initialized; cannot send ping packet")
+                    return False
+                self.socket.sendto(ping_packet, (self.robot_ip, self.udp_port))
+                await asyncio.sleep(0.1)
+                self.logger.warning("MOCK MODE: Connection test passed (robot may not actually respond)")
+                return True
             
         except Exception as e:
             self.logger.error(f"Connection test failed: {e}")
@@ -293,7 +347,11 @@ class RobotManager:
                 for callback in self.state_callbacks:
                     await callback(self.robot_state)
                 
-                await asyncio.sleep(0.01)  # 100 Hz monitoring
+                # Adjust loop frequency based on connection status
+                if self.robot_state.is_connected and self.robot_state.last_update > 0:
+                    await asyncio.sleep(0.01)  # 100 Hz when connected and receiving data
+                else:
+                    await asyncio.sleep(0.1)   # 10 Hz when not connected or no data
                 
             except asyncio.CancelledError:
                 break
@@ -307,9 +365,10 @@ class RobotManager:
             try:
                 # Send heartbeat
                 current_time = time.time()
-                if current_time - self.last_heartbeat > 1.0:
-                    await self._send_heartbeat()
-                    self.last_heartbeat = current_time
+                if self.protocol != 'ros2':
+                    if current_time - self.last_heartbeat > 1.0:
+                        await self._send_heartbeat()
+                        self.last_heartbeat = current_time
                 
                 await asyncio.sleep(0.02)  # 50 Hz command rate
                 
@@ -321,26 +380,85 @@ class RobotManager:
     
     async def _update_robot_state(self):
         """Update robot state from sensor data"""
-        # Simulate state updates (replace with actual robot communication)
-        self.robot_state.last_update = time.time()
-        self.robot_state.battery_level = max(0, self.robot_state.battery_level + 0.1)
-        self.robot_state.temperature = 25.0 + (time.time() % 10)
+        current_time = time.time()
+        has_real_data = False
+        
+        if self.protocol == 'ros2' and self.ros2_client:
+            # Pull snapshot from ROS 2 client
+            st = self.ros2_client.state
+            
+            # Check if we have real data from ROS2
+            if st.last_update_ts and (current_time - st.last_update_ts) < 5.0:
+                # We have recent real data
+                has_real_data = True
+                self.robot_state.last_update = st.last_update_ts
+                self.robot_state.is_connected = True
+                if st.battery_percentage is not None:
+                    self.robot_state.battery_level = st.battery_percentage
+                if st.temperature_c is not None:
+                    self.robot_state.temperature = st.temperature_c
+                if st.position_xyz is not None:
+                    self.robot_state.position = st.position_xyz
+                if st.orientation_rpy is not None:
+                    self.robot_state.orientation = st.orientation_rpy
+        
+        if not has_real_data:
+            # Simulate realistic state updates when no real robot data
+            self.robot_state.last_update = current_time
+            self.robot_state.is_connected = False  # Mark as simulation mode
+            
+            # Simulate realistic battery level (85-95% range with slow drain)
+            if not hasattr(self, '_sim_battery_base'):
+                self._sim_battery_base = 90.0
+                self._sim_start_time = current_time
+            
+            # Battery drains very slowly over time
+            elapsed_hours = (current_time - self._sim_start_time) / 3600.0
+            self.robot_state.battery_level = max(20.0, self._sim_battery_base - (elapsed_hours * 2.0))
+            
+            # Simulate realistic temperature (30-40°C with variation)
+            self.robot_state.temperature = 35.0 + 5.0 * (0.5 + 0.5 * math.sin(current_time * 0.1))
+            
+            # Simulate position with slight movement
+            base_x, base_y = 0.0, 0.0
+            if not hasattr(self, '_sim_position_base'):
+                self._sim_position_base = (base_x, base_y)
+            
+            # Small random-ish movement
+            offset_x = 0.1 * math.sin(current_time * 0.05)
+            offset_y = 0.1 * math.cos(current_time * 0.03)
+            self.robot_state.position = (
+                self._sim_position_base[0] + offset_x,
+                self._sim_position_base[1] + offset_y,
+                0.3  # Height above ground
+            )
+            
+            # Simulate orientation with slight rotation
+            yaw_variation = 0.05 * math.sin(current_time * 0.02)
+            self.robot_state.orientation = (0.0, 0.0, yaw_variation)
     
     async def _send_heartbeat(self):
         """Send heartbeat to robot"""
         try:
             heartbeat_packet = b'\xFF\xFE\xFD\xFC'  # Heartbeat signature
+            if not self.socket:
+                self.logger.error("UDP socket not initialized; cannot send heartbeat")
+                return
             self.socket.sendto(heartbeat_packet, (self.robot_ip, self.udp_port))
         except Exception as e:
             self.logger.error(f"Failed to send heartbeat: {e}")
     
     def _validate_config(self) -> bool:
         """Validate robot configuration"""
-        required_keys = ['ip_address', 'udp_port']
-        for key in required_keys:
-            if key not in self.robot_config:
-                self.logger.error(f"Missing required config key: {key}")
-                return False
+        if self.protocol == 'ros2':
+            # For ROS 2 we don't require IP/ports
+            return True
+        else:
+            required_keys = ['ip_address', 'udp_port']
+            for key in required_keys:
+                if key not in self.robot_config:
+                    self.logger.error(f"Missing required config key: {key}")
+                    return False
         return True
     
     def _initialize_safety(self):
@@ -399,12 +517,18 @@ class RobotManager:
         """Check safety conditions and trigger emergency stop if needed"""
         safety_config = self.safety_config.get('boundaries', {})
         
-        # Check battery level
+        # Only check safety conditions if we have recent robot data
+        if self.robot_state.last_update == 0.0:
+            return
+        
+        # Check battery level (warn for both real and simulated data)
         min_battery = safety_config.get('min_battery_level', 20)
         if self.robot_state.battery_level < min_battery:
-            self.logger.warning(f"Low battery: {self.robot_state.battery_level}%")
+            status = "simulated" if not self.robot_state.is_connected else "real"
+            self.logger.warning(f"Low battery ({status}): {self.robot_state.battery_level:.1f}%")
         
         # Check temperature
         max_temp = safety_config.get('max_temperature', 65)
         if self.robot_state.temperature > max_temp:
-            self.logger.warning(f"High temperature: {self.robot_state.temperature}°C")
+            status = "simulated" if not self.robot_state.is_connected else "real"
+            self.logger.warning(f"High temperature ({status}): {self.robot_state.temperature:.1f}°C")
