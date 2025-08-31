@@ -8,6 +8,10 @@ websockets>=11.0.3
 aiohttp>=3.9.5
 asyncio-mqtt>=0.13.0
 
+# WebRTC support for real-time robot communication
+aiortc>=1.6.0
+av>=10.0.0
+
 # Web framework and API
 fastapi>=0.103.1
 uvicorn>=0.23.2

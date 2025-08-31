@@ -24,7 +24,14 @@ module.exports = {
         max_memory_restart: '1G',
         env: {
             NODE_ENV: 'production',
-            PYTHONPATH: '/home/rav/projects/butler-connect/src'
+            PYTHONPATH: '/home/rav/projects/butler-connect/src',
+            ROS_DOMAIN_ID: '0',
+            RMW_IMPLEMENTATION: 'rmw_cyclonedx_cpp',
+            AMENT_PREFIX_PATH: '/opt/ros/jazzy',
+            CMAKE_PREFIX_PATH: '/opt/ros/jazzy',
+            LD_LIBRARY_PATH: '/opt/ros/jazzy/lib',
+            PATH: '/opt/ros/jazzy/bin:' + process.env.PATH,
+            PYTHONPATH: '/opt/ros/jazzy/lib/python3.12/site-packages:/home/rav/projects/butler-connect/src'
         },
         log_file: './logs/butler-connect.log',
         out_file: './logs/butler-connect-out.log',
