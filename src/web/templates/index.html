@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Butler Connect - Unitree Go2 Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .status-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .status-item.warning {
+            border-left-color: #f39c12;
+        }
+
+        .status-item.error {
+            border-left-color: #e74c3c;
+        }
+
+        .status-item.success {
+            border-left-color: #27ae60;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-size: 1.2em;
+            color: #34495e;
+        }
+
+        .control-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .movement-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .movement-btn {
+            padding: 15px;
+            background: #ecf0f1;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .movement-btn:hover {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+
+        .movement-btn:active {
+            transform: scale(0.95);
+        }
+
+        .joystick-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .joystick {
+            width: 150px;
+            height: 150px;
+            border: 3px solid #3498db;
+            border-radius: 50%;
+            margin: 0 auto;
+            position: relative;
+            background: #ecf0f1;
+            cursor: pointer;
+        }
+
+        .joystick-handle {
+            width: 40px;
+            height: 40px;
+            background: #3498db;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s ease;
+        }
+
+        .emergency-stop {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+            color: white !important;
+            font-size: 1.2em !important;
+            padding: 20px !important;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+            }
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e74c3c;
+            animation: blink 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #27ae60;
+            animation: none;
+        }
+
+        @keyframes blink {
+
+            0%,
+            50% {
+                opacity: 1;
+            }
+
+            51%,
+            100% {
+                opacity: 0.3;
+            }
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .control-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .movement-controls {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Butler Connect</h1>
+            <p>Unitree Go2 Robot Control Interface</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Robot Status Panel -->
+            <div class="panel">
+                <h2>Robot Status</h2>
+
+                <div class="connection-status">
+                    <div class="status-indicator" id="connectionIndicator"></div>
+                    <span id="connectionStatus">Disconnected</span>
+                </div>
+
+                <div class="status-grid">
+                    <div class="status-item" id="batteryStatus">
+                        <div class="status-label">Battery</div>
+                        <div class="status-value" id="batteryLevel">---%</div>
+                    </div>
+
+                    <div class="status-item" id="temperatureStatus">
+                        <div class="status-label">Temperature</div>
+                        <div class="status-value" id="temperature">---°C</div>
+                    </div>
+
+                    <div class="status-item">
+                        <div class="status-label">Mode</div>
+                        <div class="status-value" id="robotMode">IDLE</div>
+                    </div>
+
+                    <div class="status-item">
+                        <div class="status-label">Position</div>
+                        <div class="status-value" id="position">0, 0, 0</div>
+                    </div>
+                </div>
+
+                <div class="control-buttons">
+                    <button class="btn btn-success" id="connectBtn" onclick="connectRobot()">Connect</button>
+                    <button class="btn btn-warning" id="disconnectBtn" onclick="disconnectRobot()"
+                        disabled>Disconnect</button>
+                </div>
+            </div>
+
+            <!-- Movement Control Panel -->
+            <div class="panel">
+                <h2>Movement Control</h2>
+
+                <div class="movement-controls">
+                    <div></div>
+                    <div class="movement-btn" onmousedown="startMovement(0.5, 0, 0)" onmouseup="stopMovement()">
+                        ↑<br>Forward</div>
+                    <div></div>
+
+                    <div class="movement-btn" onmousedown="startMovement(0, 0, 0.5)" onmouseup="stopMovement()">
+                        ↶<br>Turn Left</div>
+                    <div class="movement-btn" onclick="stopRobot()">⏹<br>Stop</div>
+                    <div class="movement-btn" onmousedown="startMovement(0, 0, -0.5)" onmouseup="stopMovement()">
+                        ↷<br>Turn Right</div>
+
+                    <div></div>
+                    <div class="movement-btn" onmousedown="startMovement(-0.5, 0, 0)" onmouseup="stopMovement()">
+                        ↓<br>Backward</div>
+                    <div></div>
+                </div>
+
+                <div class="joystick-container">
+                    <div class="joystick" id="joystick">
+                        <div class="joystick-handle" id="joystickHandle"></div>
+                    </div>
+                    <p>Virtual Joystick</p>
+                </div>
+            </div>
+
+            <!-- Safety Controls -->
+            <div class="panel full-width">
+                <h2>Safety & Emergency Controls</h2>
+
+                <div class="control-buttons">
+                    <button class="btn btn-primary" onclick="changeGait('walk')">Walk Gait</button>
+                    <button class="btn btn-primary" onclick="changeGait('trot')">Trot Gait</button>
+                    <button class="btn btn-primary" onclick="changeGait('run')">Run Gait</button>
+                    <button class="btn btn-warning" onclick="setStepHeight(0.05)">Low Step</button>
+                    <button class="btn btn-warning" onclick="setStepHeight(0.1)">Normal Step</button>
+                    <button class="btn btn-warning" onclick="setStepHeight(0.15)">High Step</button>
+                    <button class="btn emergency-stop" onclick="emergencyStop()">🚨 EMERGENCY STOP 🚨</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket connection for real-time updates
+        let websocket = null;
+        let isConnected = false;
+        let currentMovement = null;
+
+        // Initialize WebSocket connection
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+            websocket = new WebSocket(wsUrl);
+
+            websocket.onopen = function () {
+                console.log('WebSocket connected');
+            };
+
+            websocket.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+
+            websocket.onclose = function () {
+                console.log('WebSocket disconnected');
+                setTimeout(initWebSocket, 3000); // Reconnect after 3 seconds
+            };
+
+            websocket.onerror = function (error) {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        // Handle WebSocket messages
+        function handleWebSocketMessage(data) {
+            if (data.type === 'state_update') {
+                updateRobotStatus(data.data);
+            } else if (data.type === 'error') {
+                console.error('Robot error:', data.message);
+                alert(`Robot Error: ${data.message}`);
+            }
+        }
+
+        // Update robot status display
+        function updateRobotStatus(status) {
+            // Connection status
+            isConnected = status.is_connected;
+            const indicator = document.getElementById('connectionIndicator');
+            const statusText = document.getElementById('connectionStatus');
+
+            if (isConnected) {
+                indicator.classList.add('connected');
+                statusText.textContent = 'Connected';
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+            } else {
+                indicator.classList.remove('connected');
+                statusText.textContent = 'Disconnected';
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+            }
+
+            // Battery status
+            const batteryLevel = status.battery_level || 0;
+            document.getElementById('batteryLevel').textContent = `${batteryLevel.toFixed(1)}%`;
+
+            const batteryStatus = document.getElementById('batteryStatus');
+            batteryStatus.className = 'status-item';
+            if (batteryLevel < 20) {
+                batteryStatus.classList.add('error');
+            } else if (batteryLevel < 40) {
+                batteryStatus.classList.add('warning');
+            } else {
+                batteryStatus.classList.add('success');
+            }
+
+            // Temperature status
+            const temperature = status.temperature || 0;
+            document.getElementById('temperature').textContent = `${temperature.toFixed(1)}°C`;
+
+            const tempStatus = document.getElementById('temperatureStatus');
+            tempStatus.className = 'status-item';
+            if (temperature > 60) {
+                tempStatus.classList.add('error');
+            } else if (temperature > 50) {
+                tempStatus.classList.add('warning');
+            } else {
+                tempStatus.classList.add('success');
+            }
+
+            // Robot mode
+            document.getElementById('robotMode').textContent = status.mode || 'IDLE';
+
+            // Position
+            if (status.position) {
+                const [x, y, z] = status.position;
+                document.getElementById('position').textContent =
+                    `${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}`;
+            }
+        }
+
+        // Robot control functions
+        async function connectRobot() {
+            try {
+                const response = await fetch('/api/robot/connect', { method: 'POST' });
+                const result = await response.json();
+                console.log('Connect result:', result);
+            } catch (error) {
+                console.error('Connect error:', error);
+                alert('Failed to connect to robot');
+            }
+        }
+
+        async function disconnectRobot() {
+            try {
+                const response = await fetch('/api/robot/disconnect', { method: 'POST' });
+                const result = await response.json();
+                console.log('Disconnect result:', result);
+            } catch (error) {
+                console.error('Disconnect error:', error);
+                alert('Failed to disconnect from robot');
+            }
+        }
+
+        async function sendMovementCommand(linearX, linearY, angularZ) {
+            if (!isConnected) return;
+
+            try {
+                const response = await fetch('/api/robot/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        linear_x: linearX,
+                        linear_y: linearY,
+                        angular_z: angularZ
+                    })
+                });
+                const result = await response.json();
+                console.log('Movement result:', result);
+            } catch (error) {
+                console.error('Movement error:', error);
+            }
+        }
+
+        function startMovement(linearX, linearY, angularZ) {
+            if (currentMovement) {
+                clearInterval(currentMovement);
+            }
+
+            // Send command immediately
+            sendMovementCommand(linearX, linearY, angularZ);
+
+            // Continue sending commands while button is pressed
+            currentMovement = setInterval(() => {
+                sendMovementCommand(linearX, linearY, angularZ);
+            }, 100);
+        }
+
+        function stopMovement() {
+            if (currentMovement) {
+                clearInterval(currentMovement);
+                currentMovement = null;
+            }
+            sendMovementCommand(0, 0, 0);
+        }
+
+        async function stopRobot() {
+            try {
+                const response = await fetch('/api/robot/stop', { method: 'POST' });
+                const result = await response.json();
+                console.log('Stop result:', result);
+            } catch (error) {
+                console.error('Stop error:', error);
+            }
+        }
+
+        async function emergencyStop() {
+            if (confirm('Are you sure you want to trigger emergency stop?')) {
+                try {
+                    const response = await fetch('/api/robot/emergency_stop', { method: 'POST' });
+                    const result = await response.json();
+                    console.log('Emergency stop result:', result);
+                    alert('Emergency stop activated!');
+                } catch (error) {
+                    console.error('Emergency stop error:', error);
+                }
+            }
+        }
+
+        async function changeGait(gait) {
+            await sendMovementCommand(0, 0, 0); // Stop first
+            // Note: Gait changing would require additional API endpoint
+            console.log(`Changing gait to: ${gait}`);
+        }
+
+        async function setStepHeight(height) {
+            // Note: Step height setting would require additional API endpoint
+            console.log(`Setting step height to: ${height}`);
+        }
+
+        // Joystick functionality
+        function initJoystick() {
+            const joystick = document.getElementById('joystick');
+            const handle = document.getElementById('joystickHandle');
+
+            let isDragging = false;
+            let joystickRect;
+            let centerX, centerY;
+            let maxRadius;
+
+            function updateJoystickPosition(x, y) {
+                const dx = x - centerX;
+                const dy = y - centerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance <= maxRadius) {
+                    handle.style.left = x - joystickRect.left + 'px';
+                    handle.style.top = y - joystickRect.top + 'px';
+                } else {
+                    const angle = Math.atan2(dy, dx);
+                    const limitedX = centerX + Math.cos(angle) * maxRadius;
+                    const limitedY = centerY + Math.sin(angle) * maxRadius;
+
+                    handle.style.left = limitedX - joystickRect.left + 'px';
+                    handle.style.top = limitedY - joystickRect.top + 'px';
+                }
+
+                // Calculate movement values
+                const normalizedX = Math.max(-1, Math.min(1, dx / maxRadius));
+                const normalizedY = Math.max(-1, Math.min(1, -dy / maxRadius)); // Invert Y
+
+                // Send movement command
+                if (isDragging) {
+                    sendMovementCommand(normalizedY * 0.5, normalizedX * 0.5, 0);
+                }
+            }
+
+            joystick.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                joystickRect = joystick.getBoundingClientRect();
+                centerX = joystickRect.left + joystickRect.width / 2;
+                centerY = joystickRect.top + joystickRect.height / 2;
+                maxRadius = joystickRect.width / 2 - 20; // Subtract handle radius
+
+                updateJoystickPosition(e.clientX, e.clientY);
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    updateJoystickPosition(e.clientX, e.clientY);
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+
+                    // Return handle to center
+                    handle.style.left = '50%';
+                    handle.style.top = '50%';
+
+                    // Stop movement
+                    sendMovementCommand(0, 0, 0);
+                }
+            });
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            initWebSocket();
+            initJoystick();
+
+            // Fetch initial robot status
+            fetch('/api/robot/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.state) {
+                        updateRobotStatus({
+                            is_connected: data.connected,
+                            ...data.state
+                        });
+                    }
+                })
+                .catch(error => console.error('Failed to fetch initial status:', error));
+        });
+
+        // Prevent accidental page navigation
+        window.addEventListener('beforeunload', (e) => {
+            if (currentMovement) {
+                stopMovement();
+            }
+        });
+    </script>
+</body>
+
+</html>

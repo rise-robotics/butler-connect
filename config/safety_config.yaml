@@ -1,0 +1,33 @@
+# Safety configuration
+safety:
+  # Emergency stop settings
+  emergency_stop:
+    enabled: true
+    timeout: 0.5                 # Emergency stop timeout in seconds
+    
+  # Operational boundaries
+  boundaries:
+    max_pitch: 0.5               # Maximum pitch angle in radians
+    max_roll: 0.5                # Maximum roll angle in radians
+    min_battery_level: 20        # Minimum battery level percentage
+    max_temperature: 65          # Maximum operating temperature in Celsius
+    
+  # Collision avoidance
+  collision_avoidance:
+    enabled: true
+    detection_range: 1.0         # Detection range in meters
+    reaction_time: 0.2           # Reaction time in seconds
+    
+  # Health monitoring
+  health_monitoring:
+    check_interval: 1.0          # Health check interval in seconds
+    alert_thresholds:
+      battery_critical: 10       # Critical battery level percentage
+      temperature_warning: 55    # Temperature warning threshold
+      joint_error_threshold: 0.1 # Joint error threshold
+      
+# Fail-safe actions
+failsafe:
+  default_action: "stop"         # Default failsafe action (stop, sit, lie)
+  recovery_timeout: 10.0         # Recovery timeout in seconds
+  auto_recovery: true            # Enable automatic recovery

@@ -1,0 +1,30 @@
+# Robot connection configuration
+robot:
+  # Network settings
+  ip_address: "192.168.123.161"  # Default Unitree Go2 IP
+  udp_port: 8082                 # High-level command port
+  low_level_port: 8007           # Low-level command port
+  
+  # Connection settings
+  timeout: 5.0                   # Connection timeout in seconds
+  retry_attempts: 3              # Number of retry attempts
+  heartbeat_interval: 1.0        # Heartbeat interval in seconds
+  
+  # Robot specifications
+  model: "Go2"
+  max_speed: 1.5                 # Maximum speed in m/s
+  max_angular_speed: 2.0         # Maximum angular speed in rad/s
+  
+# Communication protocol settings
+communication:
+  protocol: "udp"                # Communication protocol (udp/tcp)
+  buffer_size: 1024             # Buffer size for data reception
+  command_frequency: 50          # Command sending frequency in Hz
+  state_frequency: 100           # State monitoring frequency in Hz
+  
+# Logging configuration
+logging:
+  level: "INFO"                  # Log level (DEBUG, INFO, WARNING, ERROR)
+  file_path: "logs/robot.log"    # Log file path
+  max_file_size: "10MB"          # Maximum log file size
+  backup_count: 5                # Number of backup log files

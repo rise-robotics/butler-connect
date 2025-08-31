@@ -1,0 +1,38 @@
+# Git Setup Commands for Butler Connect
+
+# After creating the repository on GitHub, run these commands in your project directory:
+
+# 1. Initialize git repository (if not already done)
+git init
+
+# 2. Add all project files
+git add .
+
+# 3. Create initial commit
+git commit -m "Initial commit: Butler Connect - Unitree Go2 Robot Control System
+
+- Complete project structure for Unitree Go2 robot control
+- Web-based control interface with real-time monitoring
+- Safety-first design with emergency stop capabilities
+- Motion control system with gait management
+- State monitoring with historical data tracking
+- RESTful API with WebSocket support
+- Cross-platform launcher scripts
+- Comprehensive configuration system
+- Professional logging and error handling"
+
+# 4. Add remote origin (replace with your actual repository URL)
+git remote add origin https://github.com/risebt/butler-connect.git
+
+# 5. Push to GitHub
+git push -u origin main
+
+# Alternative if main branch doesn't exist:
+# git branch -M main
+# git push -u origin main
+
+# To check status at any time:
+# git status
+
+# To see what will be committed:
+# git diff --cached
