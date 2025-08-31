@@ -153,6 +153,32 @@ class APIServer:
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
         
+        @self.app.post("/api/robot/stand")
+        async def stand_up():
+            """Make robot stand up"""
+            try:
+                success = await self.robot_manager.stand_up()
+                if success:
+                    return {"status": "standing_up", "message": "Robot is standing up"}
+                else:
+                    raise HTTPException(status_code=400, detail="Failed to make robot stand up")
+                    
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self.app.post("/api/robot/sit")
+        async def sit_down():
+            """Make robot sit down"""
+            try:
+                success = await self.robot_manager.sit_down()
+                if success:
+                    return {"status": "sitting_down", "message": "Robot is sitting down"}
+                else:
+                    raise HTTPException(status_code=400, detail="Failed to make robot sit down")
+                    
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+        
         # WebSocket endpoint for real-time updates
         @self.app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):

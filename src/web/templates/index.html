@@ -33,6 +33,7 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
         }
 
         .header h1 {
@@ -43,6 +44,33 @@
         .header p {
             font-size: 1.2em;
             opacity: 0.9;
+        }
+
+        .mock-mode-warning {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            background: #f39c12;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
 
         .main-content {
@@ -293,6 +321,9 @@
 <body>
     <div class="container">
         <div class="header">
+            <div class="mock-mode-warning">
+                ⚠️ MOCK MODE - Robot commands are simulated
+            </div>
             <h1>🤖 Butler Connect</h1>
             <p>Unitree Go2 Robot Control Interface</p>
         </div>
@@ -371,6 +402,8 @@
                 <h2>Safety & Emergency Controls</h2>
 
                 <div class="control-buttons">
+                    <button class="btn btn-success" onclick="standUp()">🦴 Stand Up</button>
+                    <button class="btn btn-info" onclick="sitDown()">💺 Sit Down</button>
                     <button class="btn btn-primary" onclick="changeGait('walk')">Walk Gait</button>
                     <button class="btn btn-primary" onclick="changeGait('trot')">Trot Gait</button>
                     <button class="btn btn-primary" onclick="changeGait('run')">Run Gait</button>
@@ -575,6 +608,50 @@
             await sendMovementCommand(0, 0, 0); // Stop first
             // Note: Gait changing would require additional API endpoint
             console.log(`Changing gait to: ${gait}`);
+        }
+
+        async function standUp() {
+            try {
+                const response = await fetch('/api/robot/stand', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    console.log('Robot standing up');
+                    showStatus('Robot standing up...', 'info');
+                } else {
+                    console.error('Failed to stand up robot');
+                    showStatus('Failed to stand up robot', 'error');
+                }
+            } catch (error) {
+                console.error('Stand up error:', error);
+                showStatus('Error sending stand up command', 'error');
+            }
+        }
+
+        async function sitDown() {
+            try {
+                const response = await fetch('/api/robot/sit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    console.log('Robot sitting down');
+                    showStatus('Robot sitting down...', 'info');
+                } else {
+                    console.error('Failed to sit down robot');
+                    showStatus('Failed to sit down robot', 'error');
+                }
+            } catch (error) {
+                console.error('Sit down error:', error);
+                showStatus('Error sending sit down command', 'error');
+            }
         }
 
         async function setStepHeight(height) {

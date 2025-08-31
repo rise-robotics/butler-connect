@@ -34,7 +34,7 @@ class RobotState:
     position: tuple = (0.0, 0.0, 0.0)  # x, y, z
     orientation: tuple = (0.0, 0.0, 0.0)  # roll, pitch, yaw
     velocity: tuple = (0.0, 0.0, 0.0)  # linear and angular velocities
-    joint_positions: list = None
+    joint_positions: Optional[list] = None
     is_connected: bool = False
     last_update: float = 0.0
     
@@ -200,6 +200,56 @@ class RobotManager:
         for callback in self.error_callbacks:
             await callback("emergency_stop", "Emergency stop activated")
     
+    async def stand_up(self) -> bool:
+        """Command the robot to stand up"""
+        try:
+            if not self.is_connected or self.emergency_stop:
+                self.logger.warning("Cannot stand up: robot not connected or emergency stop active")
+                return False
+            
+            self.logger.info("Commanding robot to stand up")
+            
+            # Create stand command packet
+            stand_packet = self._create_mode_packet(RobotMode.STAND)
+            
+            # Send command
+            self.socket.sendto(stand_packet, (self.robot_ip, self.udp_port))
+            
+            # Update robot state
+            self.robot_state.mode = RobotMode.STAND
+            
+            self.logger.info("Stand up command sent successfully")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to stand up robot: {e}")
+            return False
+    
+    async def sit_down(self) -> bool:
+        """Command the robot to sit down"""
+        try:
+            if not self.is_connected or self.emergency_stop:
+                self.logger.warning("Cannot sit down: robot not connected or emergency stop active")
+                return False
+            
+            self.logger.info("Commanding robot to sit down")
+            
+            # Create sit command packet
+            sit_packet = self._create_mode_packet(RobotMode.SIT)
+            
+            # Send command
+            self.socket.sendto(sit_packet, (self.robot_ip, self.udp_port))
+            
+            # Update robot state
+            self.robot_state.mode = RobotMode.SIT
+            
+            self.logger.info("Sit down command sent successfully")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to sit down robot: {e}")
+            return False
+    
     def register_state_callback(self, callback: Callable):
         """Register callback for state updates"""
         self.state_callbacks.append(callback)
@@ -211,12 +261,18 @@ class RobotManager:
     async def _test_connection(self) -> bool:
         """Test connection to robot"""
         try:
-            # Send ping packet
+            # MOCK MODE: This is a placeholder connection test
+            # Real Unitree Go2 robots use DDS communication, not UDP
+            self.logger.warning("MOCK MODE: Using placeholder connection test")
+            self.logger.warning("Real Go2 robots require Unitree SDK2 with DDS communication")
+            
+            # Send ping packet (mock - robot will ignore this)
             ping_packet = b'\x00\x01\x02\x03'  # Simple ping
             self.socket.sendto(ping_packet, (self.robot_ip, self.udp_port))
             
-            # Wait for response (simplified)
+            # Wait for response (simplified - always returns True in mock mode)
             await asyncio.sleep(0.1)
+            self.logger.warning("MOCK MODE: Connection test passed (robot may not actually respond)")
             return True
             
         except Exception as e:
@@ -308,7 +364,12 @@ class RobotManager:
     
     def _create_motion_packet(self, command: MotionCommand) -> bytes:
         """Create motion command packet"""
-        # Create a simple packet structure (replace with actual protocol)
+        # MOCK MODE: This creates placeholder packets that real robots ignore
+        # Real Unitree Go2 robots require DDS messages with specific formats
+        self.logger.debug(f"MOCK MODE: Creating motion packet - robot will ignore this")
+        self.logger.debug(f"Motion command: linear_x={command.linear_x}, linear_y={command.linear_y}, angular_z={command.angular_z}")
+        
+        # Create a simple packet structure (mock - replace with actual protocol)
         packet = struct.pack(
             'ffff',
             command.linear_x,
@@ -316,6 +377,22 @@ class RobotManager:
             command.angular_z,
             command.step_height
         )
+        return packet
+    
+    def _create_mode_packet(self, mode: RobotMode) -> bytes:
+        """Create mode change command packet"""
+        # MOCK MODE: This creates placeholder packets that real robots ignore
+        # Real Unitree Go2 robots require DDS SportClient commands
+        self.logger.debug(f"MOCK MODE: Creating mode packet for {mode.name} - robot will ignore this")
+        
+        # Create a mode command packet (mock - replace with actual Unitree protocol)
+        # Format: [header][command_type][mode][checksum]
+        header = b'\xAA\xBB'  # Command header
+        command_type = b'\x01'  # Mode change command
+        mode_byte = struct.pack('B', mode.value)
+        checksum = struct.pack('B', (sum(header + command_type + mode_byte)) % 256)
+        
+        packet = header + command_type + mode_byte + checksum
         return packet
     
     def _check_safety_conditions(self):
