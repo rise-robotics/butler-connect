@@ -322,7 +322,7 @@
     <div class="container">
         <div class="header">
             <div class="mock-mode-warning" id="modeBadge">
-                ⚠️ MOCK MODE - Robot commands are simulated
+                🌐 WebRTC LocalSTA Mode
             </div>
             <h1>🤖 Butler Connect</h1>
             <p>Unitree Go2 Robot Control Interface</p>
@@ -730,10 +730,20 @@
 
         // Initialize on page load
         window.addEventListener('load', () => {
-            // Toggle mock badge based on protocol
+            // Update badge based on protocol
             const badge = document.getElementById('modeBadge');
-            if (SERVER_PROTOCOL && SERVER_PROTOCOL.toLowerCase() === 'ros2') {
-                if (badge) badge.style.display = 'none';
+            if (SERVER_PROTOCOL && badge) {
+                const protocol = SERVER_PROTOCOL.toLowerCase();
+                if (protocol === 'webrtc') {
+                    badge.innerHTML = '🌐 WebRTC LocalSTA Mode';
+                    badge.style.backgroundColor = '#27ae60'; // Green for WebRTC
+                } else if (protocol === 'ros2') {
+                    badge.innerHTML = '🤖 ROS2 Mode';
+                    badge.style.backgroundColor = '#3498db'; // Blue for ROS2
+                } else {
+                    badge.innerHTML = '⚠️ MOCK MODE - Robot commands are simulated';
+                    badge.style.backgroundColor = '#f39c12'; // Orange for mock
+                }
             }
             initWebSocket();
             initJoystick();

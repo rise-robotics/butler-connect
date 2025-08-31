@@ -14,6 +14,8 @@ from enum import Enum
 
 from utils.logger import get_logger
 from core.ros2_client import ROS2Client
+from core.webrtc_client import WebRTCClient
+from core.unitree_webrtc_client import UnitreeWebRTCClient
 
 
 class RobotMode(Enum):
@@ -70,6 +72,7 @@ class RobotManager:
         # Communication protocol
         self.protocol = (self.comm_config.get('protocol') or 'udp').lower()
         self.ros2_client = None
+        self.webrtc_client = None
 
         # Connection parameters (used for UDP/mock)
         self.robot_ip = self.robot_config.get('ip_address', '192.168.123.161')
@@ -115,6 +118,14 @@ class RobotManager:
                     self.protocol = 'udp'
                 else:
                     self.logger.info("ROS 2 transport ready")
+            elif self.protocol == 'webrtc':
+                self.logger.info("Initializing WebRTC transport...")
+                self.webrtc_client = UnitreeWebRTCClient(self.config)
+                # Try to initialize but don't require it to succeed at this point
+                # Connection will be attempted in the connect() method
+                self.logger.info("WebRTC transport ready")
+                # Set up WebRTC callbacks
+                self._setup_unitree_webrtc_callbacks()
             
             self.logger.info("Robot manager initialization complete")
             return True
@@ -133,6 +144,18 @@ class RobotManager:
                 self.last_heartbeat = time.time()
                 self.logger.info("Connected (ROS 2 mode)")
                 return True
+            elif self.protocol == 'webrtc':
+                # Connect via WebRTC
+                self.logger.info(f"Connecting to robot at {self.robot_ip} (WebRTC mode)")
+                if self.webrtc_client and await self.webrtc_client.connect():
+                    self.is_connected = True
+                    self.robot_state.is_connected = True
+                    self.last_heartbeat = time.time()
+                    self.logger.info("Successfully connected via WebRTC")
+                    return True
+                else:
+                    self.logger.error("Failed to establish WebRTC connection")
+                    return False
             else:
                 self.logger.info(f"Connecting to robot at {self.robot_ip}:{self.udp_port} (UDP mode)")
                 # Create UDP socket
@@ -171,6 +194,9 @@ class RobotManager:
             if self.protocol == 'ros2':
                 if self.ros2_client:
                     self.ros2_client.shutdown()
+            elif self.protocol == 'webrtc':
+                if self.webrtc_client:
+                    await self.webrtc_client.disconnect()
             else:
                 # Close socket
                 if self.socket:
@@ -184,6 +210,91 @@ class RobotManager:
             
         except Exception as e:
             self.logger.error(f"Disconnect error: {e}")
+    
+    def _setup_unitree_webrtc_callbacks(self):
+        """Set up Unitree WebRTC data callbacks"""
+        if not self.webrtc_client:
+            return
+        
+        def on_robot_data(data):
+            """Handle all robot data from Unitree WebRTC SDK"""
+            try:
+                # Update battery data
+                if 'battery' in data:
+                    battery = data['battery']
+                    self.robot_state.battery_level = battery.get('level', 0)
+                    if 'temperature' in battery:
+                        self.robot_state.temperature = battery['temperature']
+                
+                # Update IMU/orientation data
+                if 'imu' in data:
+                    imu = data['imu']
+                    self.robot_state.orientation = (
+                        imu.get('roll', 0),
+                        imu.get('pitch', 0), 
+                        imu.get('yaw', 0)
+                    )
+                
+                # Update position data
+                if 'position' in data:
+                    pos = data['position']
+                    self.robot_state.position = (
+                        pos.get('x', 0),
+                        pos.get('y', 0),
+                        pos.get('z', 0)
+                    )
+                
+                # Update velocity data
+                if 'velocity' in data:
+                    vel = data['velocity']
+                    # Store linear velocities, angular velocity in yaw
+                    self.robot_state.velocity = (
+                        vel.get('x', 0),
+                        vel.get('y', 0), 
+                        0.0  # placeholder for angular velocity if needed
+                    )
+                
+                # Update motor/joint data
+                if 'motors' in data and data['motors']:
+                    joint_positions = []
+                    for motor in data['motors']:
+                        joint_positions.append(motor.get('position', 0))
+                    
+                    # Ensure we have 12 positions (pad or truncate as needed)
+                    while len(joint_positions) < 12:
+                        joint_positions.append(0.0)
+                    self.robot_state.joint_positions = joint_positions[:12]
+                
+                # Update mode from robot data
+                if 'mode' in data:
+                    mode_id = data['mode']
+                    # Map Unitree mode to our RobotMode enum
+                    mode_map = {
+                        0: RobotMode.IDLE,
+                        1: RobotMode.STAND, 
+                        2: RobotMode.WALK,
+                        3: RobotMode.RUN,
+                        4: RobotMode.SIT,
+                        5: RobotMode.LIE
+                    }
+                    self.robot_state.mode = mode_map.get(mode_id, RobotMode.IDLE)
+                
+                # Update connection status
+                self.robot_state.is_connected = data.get('connected', False)
+                self.robot_state.last_update = time.time()
+                
+                # Update heartbeat
+                self.last_heartbeat = time.time()
+                
+                self.logger.debug(f"Unitree WebRTC: Robot data updated - Battery: {self.robot_state.battery_level}%")
+                
+            except Exception as e:
+                self.logger.error(f"Error processing Unitree WebRTC data: {e}")
+        
+        # Add the callback to the Unitree client
+        self.webrtc_client.add_data_callback(on_robot_data)
+        
+        self.logger.info("Unitree WebRTC data callbacks configured")
     
     async def start_monitoring(self):
         """Start robot state monitoring"""
@@ -205,6 +316,21 @@ class RobotManager:
                 if self.ros2_client:
                     self.ros2_client.publish_twist(command.linear_x, command.linear_y, command.angular_z)
                 self.logger.debug(f"ROS 2: Published motion command: {command}")
+            elif self.protocol == 'webrtc':
+                # Send via Unitree WebRTC SDK
+                if self.webrtc_client:
+                    # Use Unitree SDK motion commands
+                    if command.linear_x == 0 and command.linear_y == 0 and command.angular_z == 0:
+                        # Stop command
+                        await self.webrtc_client.stop_movement()
+                    else:
+                        # Move command with velocities
+                        await self.webrtc_client.move_robot(
+                            command.linear_x, 
+                            command.linear_y, 
+                            command.angular_z
+                        )
+                self.logger.debug(f"Unitree WebRTC: Sent motion command: {command}")
             else:
                 # Create command packet (UDP/mock)
                 packet = self._create_motion_packet(command)
@@ -248,6 +374,15 @@ class RobotManager:
                     self.logger.warning("Stand service not available or failed; ensure robot driver exposes it")
                 else:
                     self.logger.info("Stand service call succeeded")
+            elif self.protocol == 'webrtc':
+                # Use Unitree WebRTC SDK stand command
+                if self.webrtc_client:
+                    success = await self.webrtc_client.stand_up()
+                    if not success:
+                        self.logger.warning("Unitree WebRTC stand command failed")
+                        return False
+                    else:
+                        self.logger.info("Unitree WebRTC stand command succeeded")
             else:
                 # Create stand command packet
                 stand_packet = self._create_mode_packet(RobotMode.STAND)
@@ -282,6 +417,15 @@ class RobotManager:
                     self.logger.warning("Sit service not available or failed; ensure robot driver exposes it")
                 else:
                     self.logger.info("Sit service call succeeded")
+            elif self.protocol == 'webrtc':
+                # Use Unitree WebRTC SDK sit command
+                if self.webrtc_client:
+                    success = await self.webrtc_client.sit_down()
+                    if not success:
+                        self.logger.warning("Unitree WebRTC sit command failed")
+                        return False
+                    else:
+                        self.logger.info("Unitree WebRTC sit command succeeded")
             else:
                 # Create sit command packet
                 sit_packet = self._create_mode_packet(RobotMode.SIT)
@@ -399,6 +543,13 @@ class RobotManager:
                     self.robot_state.temperature = st.temperature_c
                 if st.position_xyz is not None:
                     self.robot_state.position = st.position_xyz
+                if st.orientation_rpy is not None:
+                    self.robot_state.orientation = st.orientation_rpy
+        elif self.protocol == 'webrtc' and self.webrtc_client:
+            # Check if we have recent WebRTC data
+            if self.robot_state.last_update and (current_time - self.robot_state.last_update) < 5.0:
+                has_real_data = True
+                # WebRTC data is already updated via callbacks
                 if st.orientation_rpy is not None:
                     self.robot_state.orientation = st.orientation_rpy
         

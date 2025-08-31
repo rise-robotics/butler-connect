@@ -1,12 +1,12 @@
 # Robot connection configuration
 robot:
-  # Network settings
-  ip_address: "unitree.local"    # Robot hostname/IP address
+  # Network settings - LocalSTA mode configuration
+  ip_address: "192.168.100.94"   # Robot IP address on your local network (localSTA)
   udp_port: 8082                 # High-level command port
   low_level_port: 8007           # Low-level command port
   
   # Connection settings
-  timeout: 5.0                   # Connection timeout in seconds
+  timeout: 10.0                  # Connection timeout in seconds (increased for WebRTC)
   retry_attempts: 3              # Number of retry attempts
   heartbeat_interval: 1.0        # Heartbeat interval in seconds
   
@@ -15,9 +15,13 @@ robot:
   max_speed: 1.5                 # Maximum speed in m/s
   max_angular_speed: 2.0         # Maximum angular speed in rad/s
   
+  # WebRTC-specific settings for localSTA mode
+  webrtc_connection_method: "localSTA"  # Preferred connection method
+  enable_fallback_to_localAP: true     # Allow fallback to localAP if localSTA fails
+  
 # Communication protocol settings
 communication:
-  protocol: "ros2"               # Communication protocol (udp/ros2)
+  protocol: "webrtc"               # Communication protocol (udp/ros2/webrtc)
   buffer_size: 1024             # Buffer size for data reception
   command_frequency: 50          # Command sending frequency in Hz
   state_frequency: 100           # State monitoring frequency in Hz
@@ -29,6 +33,32 @@ communication:
     odom_topic: "odom"
     stand_service: "stand_up"    # Optional Trigger services provided by your driver
     sit_service: "sit_down"
+  webrtc:
+    # LocalSTA mode settings (robot connected to same network via router)
+    connection_method: "localSTA"    # Primary connection method
+    signaling_port: 8080             # WebRTC signaling port
+    video_enabled: true              # Enable video streaming
+    data_channel_enabled: true       # Enable data channel for sensor data
+    
+    # Data channel subscriptions
+    subscribe_to_low_state: true     # Motor, IMU, battery data
+    subscribe_to_sport_state: true   # Position, velocity, mode data
+    subscribe_to_multiple_state: true # Additional sensor data
+    
+    # LocalSTA specific settings
+    localsta:
+      auto_detect_robot_ip: false    # Use configured IP instead of auto-detection
+      connection_timeout: 15         # Timeout for localSTA connection attempts
+      
+    # Fallback to LocalAP settings
+    localap:
+      enable_fallback: true          # Enable fallback to LocalAP if LocalSTA fails
+      fallback_timeout: 10           # Timeout before trying LocalAP
+      
+    # ICE servers (not needed for LocalSTA but kept for compatibility)
+    ice_servers:
+      - urls: "stun:stun.l.google.com:19302"
+      - urls: "stun:stun1.l.google.com:19302"
   
 # Logging configuration
 logging:
@@ -39,5 +69,13 @@ logging:
 
 # Server configuration
 server:
-  host: "localhost"
-  port: 8090
+  host: "0.0.0.0"              # Bind to all interfaces for network access
+  port: 8090                   # Web UI port
+  
+  # CORS settings for web UI
+  cors_enabled: true
+  allowed_origins: ["*"]       # Allow access from any origin (adjust for security)
+  
+  # WebSocket settings
+  websocket_timeout: 30        # WebSocket connection timeout
+  websocket_ping_interval: 10  # Ping interval to keep connection alive
