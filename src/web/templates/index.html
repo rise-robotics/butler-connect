@@ -321,7 +321,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="mock-mode-warning">
+            <div class="mock-mode-warning" id="modeBadge">
                 ⚠️ MOCK MODE - Robot commands are simulated
             </div>
             <h1>🤖 Butler Connect</h1>
@@ -417,6 +417,8 @@
     </div>
 
     <script>
+        // Injected by server via template context
+    const SERVER_PROTOCOL = "{{ protocol if protocol is defined else 'udp' }}";
         // WebSocket connection for real-time updates
         let websocket = null;
         let isConnected = false;
@@ -728,6 +730,11 @@
 
         // Initialize on page load
         window.addEventListener('load', () => {
+            // Toggle mock badge based on protocol
+            const badge = document.getElementById('modeBadge');
+            if (SERVER_PROTOCOL && SERVER_PROTOCOL.toLowerCase() === 'ros2') {
+                if (badge) badge.style.display = 'none';
+            }
             initWebSocket();
             initJoystick();
 

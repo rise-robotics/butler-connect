@@ -92,8 +92,8 @@ if exist "config\safety_config.yaml" (
 
 echo.
 echo 🚀 Starting Butler Connect...
-echo 📱 Web interface: http://localhost:8000
-echo 📖 API docs: http://localhost:8000/docs
+echo 📱 Web interface: http://localhost:8080
+echo 📖 API docs: http://localhost:8080/docs
 echo.
 echo ⚠️  SAFETY REMINDER:
 echo    - Keep emergency stop ready

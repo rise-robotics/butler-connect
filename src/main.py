@@ -67,7 +67,14 @@ class ButlerConnectApp:
             monitor_task = asyncio.create_task(self.robot_manager.start_monitoring())
             
             self.logger.info("Application started successfully")
-            self.logger.info("Web interface available at http://localhost:8080")
+            # Announce actual host/port from API server
+            try:
+                self.logger.info(
+                    f"Web interface available at http://{self.api_server.host}:{self.api_server.port}"
+                )
+            except Exception:
+                # Fallback message
+                self.logger.info("Web interface started")
             
             # Wait for shutdown signal
             await asyncio.gather(server_task, monitor_task)

@@ -17,10 +17,18 @@ robot:
   
 # Communication protocol settings
 communication:
-  protocol: "udp"                # Communication protocol (udp/tcp)
+  protocol: "ros2"               # Communication protocol (udp/ros2)
   buffer_size: 1024             # Buffer size for data reception
   command_frequency: 50          # Command sending frequency in Hz
   state_frequency: 100           # State monitoring frequency in Hz
+  ros2:
+    namespace: ""                # Optional ROS 2 namespace
+    cmd_vel_topic: "cmd_vel"
+    battery_topic: "battery_state"
+    temperature_topic: "temperature"
+    odom_topic: "odom"
+    stand_service: "stand_up"    # Optional Trigger services provided by your driver
+    sit_service: "sit_down"
   
 # Logging configuration
 logging:
@@ -28,3 +36,8 @@ logging:
   file_path: "logs/robot.log"    # Log file path
   max_file_size: "10MB"          # Maximum log file size
   backup_count: 5                # Number of backup log files
+
+# Server configuration
+server:
+  host: "localhost"
+  port: 8090

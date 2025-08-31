@@ -5,7 +5,7 @@ Pillow==10.0.0
 
 # Network communication
 websockets==11.0.3
-aiohttp==3.8.5
+aiohttp==3.9.5
 asyncio-mqtt==0.13.0
 
 # Web framework and API
