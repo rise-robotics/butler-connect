@@ -7,7 +7,7 @@
 
 **Professional Control System for Unitree Go2 Quadruped Robot**
 
-Butler Connect is a comprehensive, safety-first control system designed for the Unitree Go2 quadruped robot. It provides an intuitive web interface, robust safety monitoring, and professional-grade motion control capabilities.
+Butler Connect is a comprehensive, safety-first control system designed for the Unitree Go2 quadruped robot. Developed by Rise Robotics, it provides an intuitive web interface, robust safety monitoring, and professional-grade motion control capabilities.
 
 ## ✨ Features
 
